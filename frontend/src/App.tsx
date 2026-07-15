@@ -1,8 +1,18 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-// API Base URL config
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+// Design tokens
+const colors = {
+  bg: '#FFFFFF',
+  surface: '#F5F9FF',
+  accent: '#3B82F6',
+  accentHover: '#2563EB',
+  text: '#0F172A',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+};
 
 interface WebsiteMetadata {
   url: string;
@@ -13,11 +23,7 @@ interface WebsiteMetadata {
   emails: string[];
   phones: string[];
   social_media: string[];
-  open_graph: {
-    title: string;
-    description: string;
-    image: string;
-  };
+  open_graph: { title: string; description: string; image: string };
 }
 
 interface DomainInfo {
@@ -36,7 +42,7 @@ interface LocationInfo {
   longitude: string;
   importance: number | string;
   osm_type: string;
-  address: Record<string, any>;
+  address: Record<string, string>;
 }
 
 interface CompanyData {
@@ -50,12 +56,7 @@ interface Warning {
   message: string;
 }
 
-interface ApiResponse {
-  success: boolean;
-  data: CompanyData;
-  warnings?: Warning[];
-  message?: string;
-}
+type NodeStatus = 'idle' | 'loading' | 'success' | 'failed';
 
 export default function App() {
   const [domainInput, setDomainInput] = useState('');
@@ -65,23 +66,17 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [showJson, setShowJson] = useState(false);
   const [rawJson, setRawJson] = useState<any>(null);
-
-  // Loading phase progress for the 3 nodes
   const [nodeStatus, setNodeStatus] = useState<{
-    website: 'idle' | 'loading' | 'success' | 'failed';
-    domain: 'idle' | 'loading' | 'success' | 'failed';
-    location: 'idle' | 'loading' | 'success' | 'failed';
-  }>({
-    website: 'idle',
-    domain: 'idle',
-    location: 'idle',
-  });
+    website: NodeStatus;
+    domain: NodeStatus;
+    location: NodeStatus;
+  }>({ website: 'idle', domain: 'idle', location: 'idle' });
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!domainInput.trim()) return;
 
-    // Normalize domain input (strip protocols and paths)
+    // Strip protocols/paths from input
     let cleanDomain = domainInput.trim().toLowerCase();
     cleanDomain = cleanDomain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
 
@@ -90,16 +85,10 @@ export default function App() {
     setData(null);
     setWarnings([]);
     setRawJson(null);
-
-    // Set nodes to loading
-    setNodeStatus({
-      website: 'loading',
-      domain: 'loading',
-      location: 'loading',
-    });
+    setNodeStatus({ website: 'loading', domain: 'loading', location: 'loading' });
 
     try {
-      const response = await axios.get<ApiResponse>(`${API_URL}/company-information`, {
+      const response = await axios.get(`${API_URL}/company-information`, {
         params: { domain: cleanDomain },
       });
 
@@ -109,8 +98,6 @@ export default function App() {
       if (resData.success && resData.data) {
         setData(resData.data);
         setWarnings(resData.warnings || []);
-        
-        // Update nodes status based on return data
         setNodeStatus({
           website: resData.data.website ? 'success' : 'failed',
           domain: resData.data.domain ? 'success' : 'failed',
@@ -119,529 +106,403 @@ export default function App() {
       } else {
         throw new Error(resData.message || 'Lookup failed');
       }
-    } catch (err: any) {
-      console.error(err);
-      const errMsg = err.response?.data?.message || err.message || 'An error occurred while fetching information.';
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
+      const errMsg = axiosErr.response?.data?.message || axiosErr.message || 'An error occurred.';
       setError(errMsg);
-      setNodeStatus({
-        website: 'failed',
-        domain: 'failed',
-        location: 'failed',
-      });
+      setNodeStatus({ website: 'failed', domain: 'failed', location: 'failed' });
     } finally {
       setLoading(false);
     }
   };
 
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return '-';
+    if (!dateStr) return '—';
     try {
       return new Date(dateStr).toLocaleDateString('id-ID', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+        year: 'numeric', month: 'long', day: 'numeric',
       });
     } catch {
       return dateStr;
     }
   };
 
+  const getSocialPlatformLabel = (url: string): string => {
+    if (url.includes('instagram.com')) return 'Instagram';
+    if (url.includes('facebook.com')) return 'Facebook';
+    if (url.includes('linkedin.com')) return 'LinkedIn';
+    if (url.includes('twitter.com') || url.includes('x.com')) return 'Twitter / X';
+    if (url.includes('tiktok.com')) return 'TikTok';
+    if (url.includes('youtube.com') || url.includes('youtu.be')) return 'YouTube';
+    return 'Link';
+  };
+
+  const NodeIcon = ({ status }: { status: NodeStatus }) => {
+    if (status === 'success')
+      return <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>;
+    if (status === 'failed')
+      return <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>;
+    return <div className="w-3 h-3 rounded-full bg-current" />;
+  };
+
   return (
-    <div className="min-h-screen bg-bg flex flex-col">
+    <div style={{ minHeight: '100vh', background: colors.bg, display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif" }}>
+
       {/* Header */}
-      <header className="border-b border-border py-6 px-8">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <span className="font-display font-bold text-2xl tracking-tight text-text">
-              Company <span className="text-accent font-extrabold">Lookup</span>
+      <header style={{ borderBottom: `1px solid ${colors.border}`, padding: '24px 32px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 24, color: colors.text }}>
+              Company <span style={{ color: colors.accent }}>Lookup</span>
             </span>
-            <span className="h-2 w-2 rounded-full bg-accent animate-pulse"></span>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors.accent, animation: 'pulse 2s infinite', display: 'inline-block' }} />
           </div>
-          <div className="text-sm text-text-muted font-medium font-body">
-            Technical Challenge
-          </div>
+          <span style={{ fontSize: 13, color: colors.textMuted, fontWeight: 500 }}>Technical Challenge</span>
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-12 flex flex-col items-center">
-        {/* Title */}
-        <div className="text-center mb-10 max-w-2xl">
-          <h1 className="font-display font-bold text-4xl sm:text-5xl text-text tracking-tight mb-4">
-            Temukan informasi perusahaan
+      {/* Main */}
+      <main style={{ flex: 1, maxWidth: 1200, margin: '0 auto', width: '100%', padding: '48px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+
+        {/* Hero title */}
+        <div style={{ textAlign: 'center', marginBottom: 40, maxWidth: 600 }}>
+          <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 42, color: colors.text, margin: '0 0 12px 0', lineHeight: 1.2 }}>
+            Temukan informasi<br />perusahaan
           </h1>
-          <p className="font-body text-text-muted text-lg">
-            Masukkan nama domain untuk mengekstrak metadata website, data registrasi domain, dan koordinat lokasi geografis.
+          <p style={{ color: colors.textMuted, fontSize: 17, margin: 0 }}>
+            Masukkan domain untuk mengekstrak metadata website, data registrasi domain, dan lokasi geografis.
           </p>
         </div>
 
-        {/* Search Box */}
-        <form onSubmit={handleSearch} className="w-full max-w-xl mb-12">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                placeholder="cth: paper.id, google.com"
-                value={domainInput}
-                onChange={(e) => setDomainInput(e.target.value)}
-                required
-                className="w-full px-5 py-4 border border-border rounded-xl font-body text-text focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all shadow-sm text-base placeholder:text-text-muted"
-              />
-            </div>
+        {/* Search form */}
+        <form onSubmit={handleSearch} style={{ width: '100%', maxWidth: 560, marginBottom: 40 }}>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <input
+              type="text"
+              placeholder="cth: paper.id, google.com"
+              value={domainInput}
+              onChange={(e) => setDomainInput(e.target.value)}
+              required
+              style={{
+                flex: 1, padding: '14px 18px',
+                border: `1.5px solid ${colors.border}`,
+                borderRadius: 12, fontSize: 15,
+                color: colors.text, outline: 'none',
+                fontFamily: "'Inter', sans-serif",
+                boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                transition: 'border-color 0.2s',
+              }}
+              onFocus={(e) => e.target.style.borderColor = colors.accent}
+              onBlur={(e) => e.target.style.borderColor = colors.border}
+            />
             <button
               type="submit"
               disabled={loading}
-              className="px-8 py-4 bg-accent hover:bg-accent-hover disabled:bg-slate-300 text-white font-body font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 text-base"
+              style={{
+                padding: '14px 28px',
+                background: loading ? '#94a3b8' : colors.accent,
+                color: '#fff', border: 'none',
+                borderRadius: 12, fontWeight: 600,
+                fontSize: 15, cursor: loading ? 'not-allowed' : 'pointer',
+                fontFamily: "'Inter', sans-serif",
+                display: 'flex', alignItems: 'center', gap: 8,
+                transition: 'background 0.2s',
+                boxShadow: '0 2px 8px rgba(59,130,246,0.3)',
+              }}
+              onMouseEnter={(e) => { if (!loading) (e.target as HTMLButtonElement).style.background = colors.accentHover; }}
+              onMouseLeave={(e) => { if (!loading) (e.target as HTMLButtonElement).style.background = colors.accent; }}
             >
               {loading ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg style={{ animation: 'spin 1s linear infinite', width: 18, height: 18 }} fill="none" viewBox="0 0 24 24">
+                    <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                   Mencari...
                 </>
               ) : (
-                <>
-                  Cari
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                  </svg>
-                </>
+                <>Cari →</>
               )}
             </button>
           </div>
         </form>
 
-        {/* 3-Node Connected Flow */}
+        {/* 3-Node Status Connector */}
         {(loading || data || error) && (
-          <div className="w-full max-w-2xl mb-12 bg-surface border border-border/60 rounded-2xl p-6 shadow-sm">
-            <div className="text-center mb-5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-text-muted font-body">
-                Status Konektor
-              </span>
-            </div>
-            <div className="relative flex items-center justify-between max-w-lg mx-auto">
-              {/* Connected Line Background */}
-              <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[3px] bg-slate-200 z-0"></div>
+          <div style={{
+            width: '100%', maxWidth: 520,
+            background: colors.surface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 20, padding: '20px 32px',
+            marginBottom: 40,
+          }}>
+            <p style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 16px 0' }}>
+              Status Konektor
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
+              {/* Background line */}
+              <div style={{ position: 'absolute', left: 28, right: 28, top: '50%', height: 3, background: colors.border, zIndex: 0, transform: 'translateY(-50%)' }} />
 
-              {/* Connected Line Progress */}
-              <div 
-                className="absolute left-0 top-1/2 -translate-y-1/2 h-[3px] bg-accent transition-all duration-500 z-0"
-                style={{
-                  width: 
-                    nodeStatus.website === 'success' && nodeStatus.domain === 'success' && nodeStatus.location === 'success' ? '100%' :
-                    nodeStatus.website === 'success' && nodeStatus.domain === 'success' ? '50%' :
-                    nodeStatus.website === 'success' ? '25%' : '0%'
-                }}
-              ></div>
+              {(['website', 'domain', 'location'] as const).map((key, idx) => {
+                const labels = ['Website', 'Domain', 'Location'];
+                const status = nodeStatus[key];
+                const bg = status === 'success' ? colors.accent : status === 'failed' ? '#EF4444' : status === 'loading' ? '#fff' : '#f1f5f9';
+                const textColor = status === 'idle' ? '#94a3b8' : status === 'loading' ? colors.accent : '#fff';
+                const borderColor = status === 'loading' ? colors.accent : status === 'success' ? '#93c5fd' : status === 'failed' ? '#fca5a5' : colors.border;
 
-              {/* Node 1: Website */}
-              <div className="relative z-10 flex flex-col items-center">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
-                  nodeStatus.website === 'success' ? 'bg-accent border-blue-200 text-white shadow-md' :
-                  nodeStatus.website === 'failed' ? 'bg-red-500 border-red-200 text-white' :
-                  nodeStatus.website === 'loading' ? 'bg-white border-accent text-accent animate-pulse scale-110 shadow-sm' :
-                  'bg-slate-100 border-slate-200 text-slate-400'
-                }`}>
-                  {nodeStatus.website === 'success' ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                  ) : nodeStatus.website === 'failed' ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.778.099-1.533.284-2.253" /></svg>
-                  )}
-                </div>
-                <span className="mt-2 text-xs font-bold font-body text-text">Website</span>
-              </div>
-
-              {/* Node 2: Domain */}
-              <div className="relative z-10 flex flex-col items-center">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
-                  nodeStatus.domain === 'success' ? 'bg-accent border-blue-200 text-white shadow-md' :
-                  nodeStatus.domain === 'failed' ? 'bg-red-500 border-red-200 text-white' :
-                  nodeStatus.domain === 'loading' ? 'bg-white border-accent text-accent animate-pulse scale-110 shadow-sm' :
-                  'bg-slate-100 border-slate-200 text-slate-400'
-                }`}>
-                  {nodeStatus.domain === 'success' ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                  ) : nodeStatus.domain === 'failed' ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z" /></svg>
-                  )}
-                </div>
-                <span className="mt-2 text-xs font-bold font-body text-text">Domain</span>
-              </div>
-
-              {/* Node 3: Location */}
-              <div className="relative z-10 flex flex-col items-center">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
-                  nodeStatus.location === 'success' ? 'bg-accent border-blue-200 text-white shadow-md' :
-                  nodeStatus.location === 'failed' ? 'bg-red-500 border-red-200 text-white' :
-                  nodeStatus.location === 'loading' ? 'bg-white border-accent text-accent animate-pulse scale-110 shadow-sm' :
-                  'bg-slate-100 border-slate-200 text-slate-400'
-                }`}>
-                  {nodeStatus.location === 'success' ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                  ) : nodeStatus.location === 'failed' ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1115 0z" /></svg>
-                  )}
-                </div>
-                <span className="mt-2 text-xs font-bold font-body text-text">Location</span>
-              </div>
+                return (
+                  <div key={key} style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                    <div style={{
+                      width: 48, height: 48, borderRadius: '50%',
+                      background: bg, border: `3px solid ${borderColor}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: textColor,
+                      boxShadow: status === 'success' ? '0 2px 12px rgba(59,130,246,0.3)' : 'none',
+                      transition: 'all 0.4s ease',
+                      transform: status === 'loading' ? 'scale(1.1)' : 'scale(1)',
+                    }}>
+                      <NodeIcon status={status} />
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: colors.text }}>{labels[idx]}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
-        {/* Global Error Message */}
+        {/* Error banner */}
         {error && (
-          <div className="w-full max-w-3xl bg-red-50 border border-red-200 rounded-xl p-4 mb-8 flex items-start gap-3">
-            <svg className="w-6 h-6 text-red-500 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <div style={{
+            width: '100%', maxWidth: 860,
+            background: '#FEF2F2', border: '1px solid #FECACA',
+            borderRadius: 12, padding: '14px 18px',
+            marginBottom: 24, display: 'flex', gap: 10, alignItems: 'flex-start',
+          }}>
+            <svg style={{ width: 20, height: 20, color: '#EF4444', flexShrink: 0, marginTop: 2 }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
             <div>
-              <h3 className="font-bold text-red-800 font-body text-sm">Gagal Mengambil Data</h3>
-              <p className="text-red-700 font-body text-sm mt-1">{error}</p>
+              <p style={{ fontWeight: 700, color: '#991B1B', fontSize: 13, margin: '0 0 4px 0' }}>Gagal Mengambil Data</p>
+              <p style={{ color: '#B91C1C', fontSize: 13, margin: 0 }}>{error}</p>
             </div>
           </div>
         )}
 
-        {/* Warnings / Partial failure list */}
+        {/* Warnings partial failure */}
         {warnings.length > 0 && (
-          <div className="w-full max-w-7xl bg-amber-50 border border-amber-200 rounded-xl p-4 mb-8 flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
-              <h4 className="font-bold text-amber-800 font-body text-sm">Beberapa sumber data tidak tersedia:</h4>
-            </div>
-            <ul className="list-disc pl-7 text-amber-700 font-body text-xs space-y-1">
-              {warnings.map((warn, i) => (
-                <li key={i}>
-                  <strong>{warn.source.toUpperCase()}</strong>: {warn.message}
-                </li>
+          <div style={{
+            width: '100%', background: '#FFFBEB',
+            border: '1px solid #FDE68A', borderRadius: 12,
+            padding: '12px 18px', marginBottom: 24,
+          }}>
+            <p style={{ fontWeight: 700, color: '#92400E', fontSize: 13, margin: '0 0 6px 0' }}>⚠ Beberapa sumber data tidak tersedia:</p>
+            <ul style={{ margin: 0, padding: '0 0 0 20px', color: '#B45309', fontSize: 12 }}>
+              {warnings.map((w, i) => (
+                <li key={i}><strong>{w.source.toUpperCase()}</strong>: {w.message}</li>
               ))}
             </ul>
           </div>
         )}
 
-        {/* Result Cards Grid */}
+        {/* Result Cards */}
         {data && (
-          <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-            {/* Website Metadata Card */}
-            <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm flex flex-col">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="p-2.5 bg-blue-100 rounded-xl text-accent">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.778.099-1.533.284-2.253" /></svg>
-                </div>
-                <div>
-                  <h2 className="font-display font-bold text-lg text-text">Website Metadata</h2>
-                  <p className="text-xs text-text-muted font-body">Ekstraksi halaman HTML</p>
-                </div>
-              </div>
+          <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginBottom: 40 }}>
 
-              {data.website ? (
-                <div className="space-y-4 font-body flex-1 flex flex-col">
-                  {/* Favicon & Title */}
-                  <div className="flex items-start space-x-3 bg-white p-3.5 border border-border rounded-xl">
+            {/* Website Card */}
+            <ResultCard
+              title="Website Metadata"
+              subtitle="Ekstraksi halaman HTML"
+              icon="🌐"
+              empty={!data.website}
+              emptyMsg="Data website tidak tersedia"
+            >
+              {data.website && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {/* Title + Favicon */}
+                  <div style={{ background: '#fff', border: `1px solid ${colors.border}`, borderRadius: 10, padding: 12, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     {data.website.favicon ? (
-                      <img 
-                        src={data.website.favicon} 
-                        alt="favicon" 
-                        className="w-10 h-10 object-contain rounded-md border border-slate-100 bg-slate-50 shrink-0"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/></svg>';
-                        }}
-                      />
+                      <img src={data.website.favicon} alt="favicon" style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 8, border: `1px solid ${colors.border}` }}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                     ) : (
-                      <div className="w-10 h-10 bg-slate-100 border border-slate-200 rounded-md flex items-center justify-center shrink-0 text-accent font-bold">W</div>
+                      <div style={{ width: 40, height: 40, background: colors.surface, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🌐</div>
                     )}
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-sm text-text truncate">
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontWeight: 700, fontSize: 13, color: colors.text, margin: '0 0 2px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {data.website.title || 'Untitled'}
-                      </h3>
-                      <a href={data.website.url} target="_blank" rel="noreferrer" className="text-xs text-accent hover:underline truncate block">
+                      </p>
+                      <a href={data.website.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: colors.accent, textDecoration: 'none', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {data.website.url}
                       </a>
                     </div>
                   </div>
 
-                  {/* Description */}
-                  <div>
-                    <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Deskripsi</span>
-                    <p className="text-sm text-text mt-1 bg-white p-3 border border-border rounded-xl leading-relaxed">
-                      {data.website.description || 'Tidak ada deskripsi metadata.'}
+                  <InfoBlock label="Deskripsi">
+                    <p style={{ fontSize: 12, color: colors.text, margin: 0, lineHeight: 1.6 }}>
+                      {data.website.description || 'Tidak ada deskripsi.'}
                     </p>
+                  </InfoBlock>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <InfoBlock label="Email">
+                      {data.website.emails.length > 0
+                        ? data.website.emails.slice(0, 3).map((e, i) => (
+                          <a key={i} href={`mailto:${e}`} style={{ display: 'block', fontSize: 11, color: colors.accent, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e}</a>
+                        ))
+                        : <span style={{ fontSize: 11, color: colors.textMuted }}>—</span>}
+                    </InfoBlock>
+                    <InfoBlock label="Telepon">
+                      {data.website.phones.length > 0
+                        ? data.website.phones.slice(0, 3).map((p, i) => (
+                          <a key={i} href={`tel:${p}`} style={{ display: 'block', fontSize: 11, color: colors.accent, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</a>
+                        ))
+                        : <span style={{ fontSize: 11, color: colors.textMuted }}>—</span>}
+                    </InfoBlock>
                   </div>
 
-                  {/* Contacts */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white p-3 border border-border rounded-xl">
-                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block mb-1">Email Extracted</span>
-                      {data.website.emails.length > 0 ? (
-                        <div className="text-xs text-text font-medium truncate space-y-1">
-                          {data.website.emails.map((e, idx) => (
-                            <a href={`mailto:${e}`} key={idx} className="block text-accent hover:underline truncate">{e}</a>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-text-muted">-</span>
-                      )}
-                    </div>
-                    <div className="bg-white p-3 border border-border rounded-xl">
-                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block mb-1">Telepon Extracted</span>
-                      {data.website.phones.length > 0 ? (
-                        <div className="text-xs text-text font-medium truncate space-y-1">
-                          {data.website.phones.map((p, idx) => (
-                            <a href={`tel:${p}`} key={idx} className="block text-accent hover:underline truncate">{p}</a>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-text-muted">-</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Social Media Links */}
-                  <div>
-                    <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block mb-2">Sosial Media</span>
+                  <InfoBlock label="Sosial Media">
                     {data.website.social_media.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {data.website.social_media.map((link, idx) => {
-                          let platform = 'Link';
-                          if (link.includes('instagram.com')) platform = 'Instagram';
-                          else if (link.includes('facebook.com')) platform = 'Facebook';
-                          else if (link.includes('linkedin.com')) platform = 'LinkedIn';
-                          else if (link.includes('twitter.com') || link.includes('x.com')) platform = 'Twitter/X';
-                          else if (link.includes('tiktok.com')) platform = 'TikTok';
-                          else if (link.includes('youtube.com') || link.includes('youtu.be')) platform = 'YouTube';
-
-                          return (
-                            <a
-                              href={link}
-                              target="_blank"
-                              rel="noreferrer"
-                              key={idx}
-                              className="text-xs px-2.5 py-1.5 bg-white border border-border rounded-lg text-accent font-medium hover:bg-slate-50 transition-colors"
-                            >
-                              {platform}
-                            </a>
-                          );
-                        })}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {data.website.social_media.map((link, i) => (
+                          <a key={i} href={link} target="_blank" rel="noreferrer"
+                            style={{ fontSize: 11, padding: '4px 10px', background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 6, color: colors.accent, textDecoration: 'none', fontWeight: 500 }}>
+                            {getSocialPlatformLabel(link)}
+                          </a>
+                        ))}
                       </div>
-                    ) : (
-                      <span className="text-xs text-text-muted font-body bg-white p-3 border border-border rounded-xl block">-</span>
-                    )}
-                  </div>
+                    ) : <span style={{ fontSize: 11, color: colors.textMuted }}>—</span>}
+                  </InfoBlock>
 
-                  {/* OG Image preview if available */}
                   {data.website.open_graph.image && (
-                    <div className="mt-auto pt-2">
-                      <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block mb-2">Open Graph Image</span>
-                      <img 
-                        src={data.website.open_graph.image} 
-                        alt="og-preview" 
-                        className="w-full h-32 object-cover rounded-xl border border-border shadow-inner"
-                      />
-                    </div>
+                    <InfoBlock label="Open Graph Image">
+                      <img src={data.website.open_graph.image} alt="OG Preview"
+                        style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 8, border: `1px solid ${colors.border}` }} />
+                    </InfoBlock>
                   )}
                 </div>
-              ) : (
-                <div className="flex-1 flex items-center justify-center p-8 text-sm text-text-muted italic bg-white border border-dashed border-border rounded-2xl">
-                  Data website tidak tersedia.
-                </div>
               )}
-            </div>
+            </ResultCard>
 
-            {/* Domain Info Card */}
-            <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm flex flex-col">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="p-2.5 bg-blue-100 rounded-xl text-accent">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z" /></svg>
-                </div>
-                <div>
-                  <h2 className="font-display font-bold text-lg text-text">Domain Intelligence</h2>
-                  <p className="text-xs text-text-muted font-body">Data Registrasi Domain (RDAP)</p>
-                </div>
-              </div>
-
-              {data.domain ? (
-                <div className="space-y-4 font-body flex-1 flex flex-col">
-                  {/* Registrar block */}
-                  <div className="bg-white p-3.5 border border-border rounded-xl">
-                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Registrar</span>
-                    <span className="text-sm font-bold text-text mt-0.5 block">
+            {/* Domain Card */}
+            <ResultCard title="Domain Intelligence" subtitle="Data Registrasi (RDAP)" icon="📋" empty={!data.domain} emptyMsg="Data domain tidak tersedia">
+              {data.domain && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <InfoBlock label="Registrar">
+                    <p style={{ fontSize: 13, fontWeight: 700, color: colors.text, margin: 0 }}>
                       {data.domain.registrar || 'Unknown Registrar'}
-                    </span>
+                    </p>
+                  </InfoBlock>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                    {[
+                      { label: 'Created', value: formatDate(data.domain.registered_at) },
+                      { label: 'Expires', value: formatDate(data.domain.expired_at) },
+                      { label: 'Updated', value: formatDate(data.domain.last_updated) },
+                    ].map(({ label, value }) => (
+                      <InfoBlock key={label} label={label}>
+                        <span style={{ fontSize: 11, color: colors.text, fontWeight: 600 }}>{value}</span>
+                      </InfoBlock>
+                    ))}
                   </div>
 
-                  {/* Date fields */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-white p-2.5 border border-border rounded-xl">
-                      <span className="text-[9px] font-bold text-text-muted uppercase tracking-wider block">Created</span>
-                      <span className="text-[11px] font-semibold text-text mt-0.5 block truncate">
-                        {formatDate(data.domain.registered_at)}
-                      </span>
-                    </div>
-                    <div className="bg-white p-2.5 border border-border rounded-xl">
-                      <span className="text-[9px] font-bold text-text-muted uppercase tracking-wider block">Expires</span>
-                      <span className="text-[11px] font-semibold text-text mt-0.5 block truncate">
-                        {formatDate(data.domain.expired_at)}
-                      </span>
-                    </div>
-                    <div className="bg-white p-2.5 border border-border rounded-xl">
-                      <span className="text-[9px] font-bold text-text-muted uppercase tracking-wider block">Updated</span>
-                      <span className="text-[11px] font-semibold text-text mt-0.5 block truncate">
-                        {formatDate(data.domain.last_updated)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Nameservers */}
-                  <div>
-                    <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block mb-2">Nameservers</span>
+                  <InfoBlock label="Nameservers">
                     {data.domain.nameservers.length > 0 ? (
-                      <div className="bg-white border border-border rounded-xl divide-y divide-border">
-                        {data.domain.nameservers.map((ns, idx) => (
-                          <span key={idx} className="block px-3 py-2 text-xs font-mono text-text">
+                      <div style={{ background: '#fff', border: `1px solid ${colors.border}`, borderRadius: 8, overflow: 'hidden' }}>
+                        {data.domain.nameservers.map((ns, i) => (
+                          <p key={i} style={{ margin: 0, padding: '6px 10px', fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: colors.text, borderBottom: i < data.domain!.nameservers.length - 1 ? `1px solid ${colors.border}` : 'none' }}>
                             {ns}
-                          </span>
+                          </p>
                         ))}
                       </div>
-                    ) : (
-                      <span className="text-xs text-text-muted font-body bg-white p-3 border border-border rounded-xl block">-</span>
-                    )}
-                  </div>
+                    ) : <span style={{ fontSize: 11, color: colors.textMuted }}>—</span>}
+                  </InfoBlock>
 
-                  {/* Statuses */}
-                  <div>
-                    <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block mb-2">Domain Status</span>
+                  <InfoBlock label="Status">
                     {data.domain.status.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        {data.domain.status.map((st, idx) => (
-                          <span key={idx} className="text-[10px] font-medium px-2 py-1 bg-blue-50 border border-blue-100 rounded-md text-accent">
-                            {st}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {data.domain.status.map((s, i) => (
+                          <span key={i} style={{ fontSize: 10, padding: '3px 8px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 6, color: colors.accent, fontWeight: 600 }}>
+                            {s}
                           </span>
                         ))}
                       </div>
-                    ) : (
-                      <span className="text-xs text-text-muted font-body bg-white p-3 border border-border rounded-xl block">-</span>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1 flex items-center justify-center p-8 text-sm text-text-muted italic bg-white border border-dashed border-border rounded-2xl">
-                  Data domain tidak tersedia.
+                    ) : <span style={{ fontSize: 11, color: colors.textMuted }}>—</span>}
+                  </InfoBlock>
                 </div>
               )}
-            </div>
+            </ResultCard>
 
-            {/* Location Finder Card */}
-            <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm flex flex-col">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="p-2.5 bg-blue-100 rounded-xl text-accent">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1115 0z" /></svg>
-                </div>
-                <div>
-                  <h2 className="font-display font-bold text-lg text-text">Company Location</h2>
-                  <p className="text-xs text-text-muted font-body">Geocoding via OSM Nominatim</p>
-                </div>
-              </div>
-
-              {data.location ? (
-                <div className="space-y-4 font-body flex-1 flex flex-col">
-                  {/* Display Name */}
-                  <div className="bg-white p-3.5 border border-border rounded-xl">
-                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Display Name</span>
-                    <span className="text-sm font-bold text-text mt-1 block leading-normal">
+            {/* Location Card */}
+            <ResultCard title="Company Location" subtitle="Geocoding via OSM Nominatim" icon="📍" empty={!data.location} emptyMsg="Data lokasi tidak tersedia">
+              {data.location && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <InfoBlock label="Nama Lokasi">
+                    <p style={{ fontSize: 12, fontWeight: 700, color: colors.text, margin: 0, lineHeight: 1.5 }}>
                       {data.location.display_name}
-                    </span>
+                    </p>
+                  </InfoBlock>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <InfoBlock label="Latitude">
+                      <span style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, color: colors.text }}>{data.location.latitude}</span>
+                    </InfoBlock>
+                    <InfoBlock label="Longitude">
+                      <span style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, color: colors.text }}>{data.location.longitude}</span>
+                    </InfoBlock>
                   </div>
 
-                  {/* Lat/Lon Block */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white p-3 border border-border rounded-xl">
-                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Latitude</span>
-                      <span className="text-sm font-mono text-text font-semibold mt-0.5 block">
-                        {data.location.latitude}
-                      </span>
-                    </div>
-                    <div className="bg-white p-3 border border-border rounded-xl">
-                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Longitude</span>
-                      <span className="text-sm font-mono text-text font-semibold mt-0.5 block">
-                        {data.location.longitude}
-                      </span>
-                    </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <InfoBlock label="Importance">
+                      <span style={{ fontSize: 12, color: colors.text, fontWeight: 600 }}>{typeof data.location.importance === 'number' ? data.location.importance.toFixed(4) : data.location.importance}</span>
+                    </InfoBlock>
+                    <InfoBlock label="OSM Type">
+                      <span style={{ fontSize: 12, color: colors.text, fontWeight: 600, textTransform: 'uppercase' }}>{data.location.osm_type}</span>
+                    </InfoBlock>
                   </div>
 
-                  {/* Geotech fields */}
-                  <div className="grid grid-cols-2 gap-3 text-xs bg-white border border-border rounded-xl p-3.5">
-                    <div>
-                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Importance</span>
-                      <span className="font-medium text-text mt-0.5 block">
-                        {data.location.importance}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">OSM Type</span>
-                      <span className="font-medium text-text mt-0.5 block uppercase">
-                        {data.location.osm_type}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Address parts details */}
-                  {data.location.address && Object.keys(data.location.address).length > 0 && (
-                    <div className="flex-1">
-                      <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block mb-2">Alamat Detail</span>
-                      <div className="bg-white border border-border rounded-xl max-h-[140px] overflow-y-auto p-3 text-xs space-y-1.5 divide-y divide-slate-100">
-                        {Object.entries(data.location.address).map(([key, val], idx) => (
-                          <div key={idx} className="flex justify-between py-1.5">
-                            <span className="font-bold text-text-muted capitalize mr-2 shrink-0">{key.replace(/_/g, ' ')}</span>
-                            <span className="text-text font-medium text-right">{String(val)}</span>
+                  {Object.keys(data.location.address).length > 0 && (
+                    <InfoBlock label="Alamat Detail">
+                      <div style={{ background: '#fff', border: `1px solid ${colors.border}`, borderRadius: 8, maxHeight: 140, overflowY: 'auto', padding: '6px 0' }}>
+                        {Object.entries(data.location.address).map(([key, val], i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 10px', borderBottom: `1px solid ${colors.border}` }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: colors.textMuted, textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}</span>
+                            <span style={{ fontSize: 10, color: colors.text, fontWeight: 600, textAlign: 'right' }}>{val}</span>
                           </div>
                         ))}
                       </div>
-                    </div>
+                    </InfoBlock>
                   )}
                 </div>
-              ) : (
-                <div className="flex-1 flex items-center justify-center p-8 text-sm text-text-muted italic bg-white border border-dashed border-border rounded-2xl">
-                  Data lokasi tidak tersedia.
-                </div>
               )}
-            </div>
+            </ResultCard>
           </div>
         )}
 
-        {/* Raw JSON Toggle & Content */}
+        {/* Raw JSON viewer */}
         {rawJson && (
-          <div className="w-full border border-border rounded-2xl overflow-hidden shadow-sm">
+          <div style={{ width: '100%', border: `1px solid ${colors.border}`, borderRadius: 16, overflow: 'hidden' }}>
             <button
               onClick={() => setShowJson(!showJson)}
-              className="w-full flex items-center justify-between px-6 py-4 bg-surface hover:bg-slate-100/80 transition-colors text-text font-semibold font-body border-b border-border"
+              style={{
+                width: '100%', display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center', padding: '14px 20px',
+                background: colors.surface, border: 'none',
+                cursor: 'pointer', fontFamily: "'Inter', sans-serif",
+                fontWeight: 600, fontSize: 14, color: colors.text,
+              }}
             >
-              <span className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
-                </svg>
-                Lihat Raw JSON Response
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 16 }}>{'</>'}</span> Lihat Raw JSON Response
               </span>
-              <svg 
-                className={`w-5 h-5 transition-transform duration-300 ${showJson ? 'rotate-180' : ''}`} 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor" 
-                strokeWidth="2"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-              </svg>
+              <span style={{ transform: showJson ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', fontSize: 18 }}>▾</span>
             </button>
             {showJson && (
-              <pre className="bg-slate-900 p-6 text-emerald-400 font-mono text-xs overflow-x-auto max-h-[500px]">
+              <pre style={{
+                background: '#0F172A', color: '#34D399',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 12, padding: 24,
+                margin: 0, overflowX: 'auto', maxHeight: 500,
+              }}>
                 <code>{JSON.stringify(rawJson, null, 2)}</code>
               </pre>
             )}
@@ -650,16 +511,58 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border py-8 px-8 bg-slate-50">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-text-muted font-body">
-          <div>
-            &copy; {new Date().getFullYear()} Company Lookup. All rights reserved.
-          </div>
-          <div>
-            Teknologi: React, TypeScript, Tailwind CSS, Express, Cheerio, Nominatim API
-          </div>
+      <footer style={{ borderTop: `1px solid ${colors.border}`, padding: '24px 32px', background: '#F8FAFC' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, fontSize: 12, color: colors.textMuted }}>
+          <span>© {new Date().getFullYear()} Company Lookup. All rights reserved.</span>
+          <span>React · TypeScript · Express · Cheerio · Nominatim</span>
         </div>
       </footer>
+
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        * { box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: ${colors.surface}; }
+        ::-webkit-scrollbar-thumb { background: ${colors.border}; border-radius: 3px; }
+      `}</style>
+    </div>
+  );
+}
+
+// Reusable card wrapper
+function ResultCard({ title, subtitle, icon, empty, emptyMsg, children }: {
+  title: string; subtitle: string; icon: string;
+  empty: boolean; emptyMsg: string; children?: React.ReactNode;
+}): React.ReactElement {
+  const cardColors = { surface: '#F5F9FF', border: '#E2E8F0', text: '#0F172A', textMuted: '#64748B' };
+  return (
+    <div style={{ background: cardColors.surface, border: `1px solid ${cardColors.border}`, borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 1px 6px rgba(0,0,0,0.04)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ fontSize: 24, width: 44, height: 44, background: '#EFF6FF', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          {icon}
+        </div>
+        <div>
+          <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16, color: cardColors.text, margin: '0 0 2px 0' }}>{title}</h2>
+          <p style={{ fontSize: 11, color: cardColors.textMuted, margin: 0 }}>{subtitle}</p>
+        </div>
+      </div>
+      {empty ? (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 120, border: `1.5px dashed ${cardColors.border}`, borderRadius: 12, color: cardColors.textMuted, fontSize: 13, fontStyle: 'italic' }}>
+          {emptyMsg}
+        </div>
+      ) : children}
+    </div>
+  );
+}
+
+// Reusable info label block
+function InfoBlock({ label, children }: { label: string; children: React.ReactNode }): React.ReactElement {
+  const blockColors = { surface: '#F5F9FF', border: '#E2E8F0', textMuted: '#64748B' };
+  return (
+    <div style={{ background: '#fff', border: `1px solid ${blockColors.border}`, borderRadius: 10, padding: '8px 12px' }}>
+      <p style={{ fontSize: 9, fontWeight: 700, color: blockColors.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px 0' }}>{label}</p>
+      {children}
     </div>
   );
 }
