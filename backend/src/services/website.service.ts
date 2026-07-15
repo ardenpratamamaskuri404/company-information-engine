@@ -4,27 +4,89 @@ import { WebsiteMetadata } from '../types/website.types';
 import { AppError } from '../types/common.types';
 
 export class WebsiteService {
-  private static TIMEOUT_MS = 8000;
+  private static TIMEOUT_MS = 12000;
+
+  // Browser-like headers to avoid anti-bot 403 blocks
+  private static BROWSER_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9,id;q=0.8',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Sec-Ch-Ua': '"Google Chrome";v="125", "Chromium";v="125", "Not.A/Brand";v="24"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Windows"',
+    'Connection': 'keep-alive',
+  };
 
   public static async extract(url: string): Promise<WebsiteMetadata> {
-    try {
-      const response = await axios.get(url, {
-        timeout: this.TIMEOUT_MS,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
-        },
-      });
+    const parsedUrl = new URL(url);
+    const origin = parsedUrl.origin;
 
-      const html = response.data;
-      if (typeof html !== 'string') {
-        throw new AppError('Website returned invalid HTML content', 502, 'UPSTREAM_ERROR');
+    // Try fetching with full browser headers; on 403 retry with www prefix if not already present
+    let html: string | null = null;
+    const urlsToTry: string[] = [url];
+    
+    // If domain has no www., add a www. variant as fallback
+    if (!parsedUrl.hostname.startsWith('www.')) {
+      urlsToTry.push(`${parsedUrl.protocol}//www.${parsedUrl.hostname}`);
+    }
+
+    let lastError: any;
+    for (const attemptUrl of urlsToTry) {
+      try {
+        const response = await axios.get(attemptUrl, {
+          timeout: this.TIMEOUT_MS,
+          maxRedirects: 5,
+          headers: {
+            ...this.BROWSER_HEADERS,
+            'Referer': `https://www.google.com/search?q=${parsedUrl.hostname}`,
+            'Host': new URL(attemptUrl).hostname,
+          },
+          // Treat 403/406 as non-throwing to attempt fallback
+          validateStatus: (status) => status < 500,
+        });
+
+        if (response.status === 200 && typeof response.data === 'string') {
+          html = response.data;
+          break;
+        } else if (response.status >= 400) {
+          lastError = new AppError(
+            `Website returned status ${response.status}. Website may be blocking automated access.`,
+            response.status,
+            'UPSTREAM_ERROR'
+          );
+        }
+      } catch (err: any) {
+        lastError = err;
       }
+    }
 
+    if (!html) {
+      if (lastError instanceof AppError) throw lastError;
+      const status = lastError?.response?.status;
+      if (status === 403 || status === 406) {
+        throw new AppError(
+          `Website is protected and cannot be accessed automatically (HTTP ${status}). Try another domain.`,
+          403,
+          'UPSTREAM_BLOCKED'
+        );
+      }
+      throw new AppError(
+        `Website cannot be reached: ${lastError?.message || 'Unknown error'}`,
+        502,
+        'UPSTREAM_ERROR'
+      );
+    }
+
+    try {
       const $ = cheerio.load(html);
-      const parsedUrl = new URL(url);
-      const origin = parsedUrl.origin;
 
       // Extract title
       const title = $('title').text().trim() || $('meta[property="og:title"]').attr('content')?.trim() || '';
