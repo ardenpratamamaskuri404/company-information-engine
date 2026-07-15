@@ -152,8 +152,8 @@ export default function App() {
       <header style={{ borderBottom: `1px solid ${colors.border}`, padding: '24px 32px' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 24, color: colors.text }}>
-              Company <span style={{ color: colors.accent }}>Lookup</span>
+            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 24, color: colors.accent }}>
+              Company Lookup
             </span>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors.accent, animation: 'pulse 2s infinite', display: 'inline-block' }} />
           </div>
@@ -514,7 +514,7 @@ export default function App() {
       <footer style={{ borderTop: `1px solid ${colors.border}`, padding: '24px 32px', background: '#F8FAFC' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, fontSize: 12, color: colors.textMuted }}>
           <span>© {new Date().getFullYear()} Company Lookup. All rights reserved.</span>
-          <span>React · TypeScript · Express · Cheerio · Nominatim</span>
+          <span>Developed by <span style={{ color: colors.accent, fontWeight: 600 }}>Arden Pratama Maskuri</span></span>
         </div>
       </footer>
 
