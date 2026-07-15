@@ -376,7 +376,7 @@ export default function App() {
                   {data.website.open_graph.image && (
                     <InfoBlock label="Open Graph Image">
                       <img src={data.website.open_graph.image} alt="OG Preview"
-                        style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 8, border: `1px solid ${colors.border}` }} />
+                        style={{ width: '100%', height: 'auto', maxHeight: 220, objectFit: 'contain', borderRadius: 8, border: `1px solid ${colors.border}`, background: '#F1F5F9', display: 'block', marginTop: 4 }} />
                     </InfoBlock>
                   )}
                 </div>
