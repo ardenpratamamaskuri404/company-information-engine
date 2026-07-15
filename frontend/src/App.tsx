@@ -320,12 +320,12 @@ export default function App() {
               {data.website && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {/* Title + Favicon */}
-                  <div style={{ background: '#fff', border: `1px solid ${colors.border}`, borderRadius: 10, padding: 12, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <div style={{ background: '#F8FAFC', border: `1px solid ${colors.border}`, borderRadius: 10, padding: 12, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     {data.website.favicon ? (
                       <img src={data.website.favicon} alt="favicon" style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 8, border: `1px solid ${colors.border}` }}
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                     ) : (
-                      <div style={{ width: 40, height: 40, background: colors.surface, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🌐</div>
+                      <div style={{ width: 40, height: 40, background: '#F0F7FF', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🌐</div>
                     )}
                     <div style={{ minWidth: 0 }}>
                       <p style={{ fontWeight: 700, fontSize: 13, color: colors.text, margin: '0 0 2px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -535,11 +535,11 @@ function ResultCard({ title, subtitle, icon, empty, emptyMsg, children }: {
   title: string; subtitle: string; icon: string;
   empty: boolean; emptyMsg: string; children?: React.ReactNode;
 }): React.ReactElement {
-  const cardColors = { surface: '#F5F9FF', border: '#E2E8F0', text: '#0F172A', textMuted: '#64748B' };
+  const cardColors = { border: '#E2E8F0', text: '#0F172A', textMuted: '#64748B' };
   return (
-    <div style={{ background: cardColors.surface, border: `1px solid ${cardColors.border}`, borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 1px 6px rgba(0,0,0,0.04)' }}>
+    <div style={{ background: '#FFFFFF', border: `1px solid ${cardColors.border}`, borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.03), 0 8px 16px -6px rgba(0, 0, 0, 0.02)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ fontSize: 24, width: 44, height: 44, background: '#EFF6FF', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ fontSize: 24, width: 44, height: 44, background: '#F0F7FF', border: '1px solid #D0E7FF', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           {icon}
         </div>
         <div>
@@ -558,9 +558,9 @@ function ResultCard({ title, subtitle, icon, empty, emptyMsg, children }: {
 
 // Reusable info label block
 function InfoBlock({ label, children }: { label: string; children: React.ReactNode }): React.ReactElement {
-  const blockColors = { surface: '#F5F9FF', border: '#E2E8F0', textMuted: '#64748B' };
+  const blockColors = { border: '#E2E8F0', textMuted: '#64748B' };
   return (
-    <div style={{ background: '#fff', border: `1px solid ${blockColors.border}`, borderRadius: 10, padding: '8px 12px' }}>
+    <div style={{ background: '#F8FAFC', border: `1px solid ${blockColors.border}`, borderRadius: 10, padding: '8px 12px' }}>
       <p style={{ fontSize: 9, fontWeight: 700, color: blockColors.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px 0' }}>{label}</p>
       {children}
     </div>

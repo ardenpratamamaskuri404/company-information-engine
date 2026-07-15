@@ -67,9 +67,18 @@ export class WebsiteService {
         const email = href.replace(/^mailto:/i, '').split('?')[0].trim();
         if (email) emailsSet.add(email.toLowerCase());
       });
-      // 2. From text regex matching
-      const bodyText = $('body').text();
-      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+      
+      // Clone DOM and remove scripts, styles, noscripts, iframes to clean up text parsing
+      const clean$ = cheerio.load(html);
+      clean$('script, style, noscript, iframe').remove();
+      
+      // Extract text separating element contents with spaces to prevent words/tags sticking
+      const bodyText = clean$('body').find('*').contents().map((_, el) => {
+        return el.type === 'text' ? clean$(el).text() : ' ';
+      }).get().join(' ');
+
+      // 2. From text regex matching with word boundaries
+      const emailRegex = /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}\b/g;
       const foundEmails = bodyText.match(emailRegex);
       if (foundEmails) {
         foundEmails.forEach(email => emailsSet.add(email.toLowerCase()));
@@ -85,7 +94,7 @@ export class WebsiteService {
         if (phone) phonesSet.add(decodeURIComponent(phone));
       });
       // 2. From text matching (Indonesian and general patterns)
-      const phoneRegex = /(?:\+?62|0)(?:\d{2,4})[-.\s]?\d{3,4}[-.\s]?\d{3,6}/g;
+      const phoneRegex = /\b(?:\+?62|0)(?:\d{2,4})[-.\s]?\d{3,4}[-.\s]?\d{3,6}\b/g;
       const foundPhones = bodyText.match(phoneRegex);
       if (foundPhones) {
         foundPhones.forEach(phone => {
