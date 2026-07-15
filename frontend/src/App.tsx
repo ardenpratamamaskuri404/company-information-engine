@@ -149,7 +149,17 @@ export default function App() {
     <div style={{ minHeight: '100vh', background: colors.bg, display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif" }}>
 
       {/* Header */}
-      <header style={{ borderBottom: `1px solid ${colors.border}`, padding: '24px 32px' }}>
+      <header style={{ 
+        position: 'sticky', 
+        top: 0, 
+        zIndex: 100, 
+        background: 'rgba(255, 255, 255, 0.85)', 
+        backdropFilter: 'blur(12px)', 
+        WebkitBackdropFilter: 'blur(12px)',
+        borderBottom: `1px solid ${colors.border}`, 
+        padding: '16px 32px',
+        transition: 'all 0.3s ease'
+      }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 24, color: colors.accent }}>
