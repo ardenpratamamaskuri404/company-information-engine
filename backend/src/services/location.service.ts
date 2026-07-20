@@ -5,18 +5,18 @@ import { config } from '../config/env';
 
 export class LocationService {
   private static TIMEOUT_MS = 8000;
-  // Promise chain to serialize and rate limit Nominatim API calls (max 1 req/sec)
+  
   private static requestQueue: Promise<any> = Promise.resolve();
 
   public static async extract(query: string): Promise<LocationInfo> {
-    // Chain the request to run sequentially
+    
     const responsePromise = this.requestQueue.then(async () => {
-      // Wait 1 second before executing the next API call to respect OSM Nominatim policy
+      
       await this.delay(1000);
       return this.fetchLocation(query);
     });
 
-    // Update the queue but catch errors to avoid breaking the chain for subsequent requests
+    
     this.requestQueue = responsePromise.catch(() => {});
 
     return responsePromise;
@@ -38,8 +38,8 @@ export class LocationService {
         },
       });
 
-      const results = response.data;
-      if (!Array.isArray(results) || results.length === 0) {
+      const results = response ? response.data : null;
+      if (!results || !Array.isArray(results) || results.length === 0) {
         throw new AppError(`Location not found for query: "${query}"`, 404, 'LOCATION_NOT_FOUND');
       }
 

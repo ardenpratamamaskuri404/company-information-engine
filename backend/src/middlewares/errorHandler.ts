@@ -8,12 +8,12 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  // If it is a known AppError
+  
   if (err instanceof AppError) {
     return res.status(err.statusCode).json(formatError(err.message, err.errorCode));
   }
 
-  // Handle other unexpected errors
+  
   console.error('Unhandled Error:', err);
   const status = err.status || err.statusCode || 500;
   const message = err.message || 'An unexpected internal server error occurred';

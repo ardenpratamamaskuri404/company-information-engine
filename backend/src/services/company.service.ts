@@ -14,7 +14,7 @@ export class CompanyService {
   public static async getCompanyInformation(domain: string): Promise<CompanyInfoResult> {
     const websiteUrl = `https://${domain}`;
 
-    // Execute all extractions in parallel
+    
     const [websiteRes, domainRes, locationRes] = await Promise.allSettled([
       WebsiteService.extract(websiteUrl),
       DomainService.extract(domain),
@@ -53,7 +53,7 @@ export class CompanyService {
       });
     }
 
-    // Standard requirement: Endpoint fails completely only if ALL three services fail
+    
     if (website === null && domainData === null && location === null) {
       throw new AppError('All details extraction failed for the requested domain.', 502, 'INTEGRATION_FAILED');
     }

@@ -17,12 +17,12 @@ export class DomainService {
         },
       });
 
-      const data = response.data;
+      const data = response ? response.data : null;
       if (!data) {
         throw new AppError('Empty response received from RDAP service', 404, 'DOMAIN_NOT_FOUND');
       }
 
-      // 1. Extract registrar
+      
       let registrar = '';
       if (data.entities && Array.isArray(data.entities)) {
         const registrarEntity = data.entities.find((ent: any) => 
@@ -42,7 +42,7 @@ export class DomainService {
         }
       }
 
-      // 2. Extract events: registered_at, expired_at, last_updated
+      
       let registered_at = '';
       let expired_at = '';
       let last_updated = '';
@@ -63,10 +63,10 @@ export class DomainService {
         });
       }
 
-      // 3. Extract status
+      
       const status = Array.isArray(data.status) ? data.status : [];
 
-      // 4. Extract nameservers
+      
       const nameservers: string[] = [];
       if (data.nameservers && Array.isArray(data.nameservers)) {
         data.nameservers.forEach((ns: any) => {

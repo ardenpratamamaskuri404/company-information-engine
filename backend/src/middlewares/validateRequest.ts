@@ -7,7 +7,7 @@ export const validateWebsiteBody = (req: Request, res: Response, next: NextFunct
     throw new AppError('URL is required', 400, 'VALIDATION_ERROR');
   }
 
-  // Validate URL format
+  
   try {
     new URL(url);
   } catch (err) {
@@ -23,7 +23,7 @@ export const validateDomainBody = (req: Request, res: Response, next: NextFuncti
     throw new AppError('Domain is required', 400, 'VALIDATION_ERROR');
   }
 
-  // Domain name regex without protocol/path
+  
   const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$/;
   if (!domainRegex.test(domain)) {
     throw new AppError('Invalid domain format. Domain should not include protocols (e.g. http://) or paths.', 400, 'VALIDATION_ERROR');
@@ -47,7 +47,7 @@ export const validateCompanyQuery = (req: Request, res: Response, next: NextFunc
     throw new AppError('Domain query parameter is required', 400, 'VALIDATION_ERROR');
   }
 
-  // Domain regex
+  
   const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$/;
   if (!domainRegex.test(domain)) {
     throw new AppError('Invalid domain format in query parameter.', 400, 'VALIDATION_ERROR');

@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-// Design tokens
+
 const colors = {
   bg: '#FFFFFF',
   surface: '#F5F9FF',
@@ -76,7 +76,7 @@ export default function App() {
     e.preventDefault();
     if (!domainInput.trim()) return;
 
-    // Strip protocols/paths from input
+    
     let cleanDomain = domainInput.trim().toLowerCase();
     cleanDomain = cleanDomain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
 
@@ -148,7 +148,7 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: colors.bg, display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif" }}>
 
-      {/* Header */}
+      {}
       <header style={{ 
         position: 'sticky', 
         top: 0, 
@@ -171,10 +171,10 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main */}
+      {}
       <main style={{ flex: 1, maxWidth: 1200, margin: '0 auto', width: '100%', padding: '48px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
 
-        {/* Hero title */}
+        {}
         <div style={{ textAlign: 'center', marginBottom: 40, maxWidth: 600 }}>
           <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 42, color: colors.text, margin: '0 0 12px 0', lineHeight: 1.2 }}>
             Temukan informasi<br />perusahaan
@@ -184,7 +184,7 @@ export default function App() {
           </p>
         </div>
 
-        {/* Search form */}
+        {}
         <form onSubmit={handleSearch} style={{ width: '100%', maxWidth: 560, marginBottom: 40 }}>
           <div style={{ display: 'flex', gap: 12 }}>
             <input
@@ -237,7 +237,7 @@ export default function App() {
           </div>
         </form>
 
-        {/* 3-Node Status Connector */}
+        {}
         {(loading || data || error) && (
           <div style={{
             width: '100%', maxWidth: 520,
@@ -250,7 +250,7 @@ export default function App() {
               Status Konektor
             </p>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
-              {/* Background line */}
+              {}
               <div style={{ position: 'absolute', left: 28, right: 28, top: '50%', height: 3, background: colors.border, zIndex: 0, transform: 'translateY(-50%)' }} />
 
               {(['website', 'domain', 'location'] as const).map((key, idx) => {
@@ -281,7 +281,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Error banner */}
+        {}
         {error && (
           <div style={{
             width: '100%', maxWidth: 860,
@@ -299,7 +299,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Warnings partial failure */}
+        {}
         {warnings.length > 0 && (
           <div style={{
             width: '100%', background: '#FFFBEB',
@@ -315,11 +315,11 @@ export default function App() {
           </div>
         )}
 
-        {/* Result Cards */}
+        {}
         {data && (
           <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginBottom: 40 }}>
 
-            {/* Website Card */}
+            {}
             <ResultCard
               title="Website Metadata"
               subtitle="Ekstraksi halaman HTML"
@@ -329,7 +329,7 @@ export default function App() {
             >
               {data.website && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {/* Title + Favicon */}
+                  {}
                   <div style={{ background: '#F8FAFC', border: `1px solid ${colors.border}`, borderRadius: 10, padding: 12, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     {data.website.favicon ? (
                       <img src={data.website.favicon} alt="favicon" style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 8, border: `1px solid ${colors.border}` }}
@@ -393,7 +393,7 @@ export default function App() {
               )}
             </ResultCard>
 
-            {/* Domain Card */}
+            {}
             <ResultCard title="Domain Intelligence" subtitle="Data Registrasi (RDAP)" icon="📋" empty={!data.domain} emptyMsg="Data domain tidak tersedia">
               {data.domain && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -442,7 +442,7 @@ export default function App() {
               )}
             </ResultCard>
 
-            {/* Location Card */}
+            {}
             <ResultCard title="Company Location" subtitle="Geocoding via OSM Nominatim" icon="📍" empty={!data.location} emptyMsg="Data lokasi tidak tersedia">
               {data.location && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -488,7 +488,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Raw JSON viewer */}
+        {}
         {rawJson && (
           <div style={{ width: '100%', border: `1px solid ${colors.border}`, borderRadius: 16, overflow: 'hidden' }}>
             <button
@@ -520,7 +520,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer */}
+      {}
       <footer style={{ borderTop: `1px solid ${colors.border}`, padding: '24px 32px', background: '#F8FAFC' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, fontSize: 12, color: colors.textMuted }}>
           <span>© {new Date().getFullYear()} Company Lookup. All rights reserved.</span>
@@ -540,7 +540,7 @@ export default function App() {
   );
 }
 
-// Reusable card wrapper
+
 function ResultCard({ title, subtitle, icon, empty, emptyMsg, children }: {
   title: string; subtitle: string; icon: string;
   empty: boolean; emptyMsg: string; children?: React.ReactNode;
@@ -566,7 +566,7 @@ function ResultCard({ title, subtitle, icon, empty, emptyMsg, children }: {
   );
 }
 
-// Reusable info label block
+
 function InfoBlock({ label, children }: { label: string; children: React.ReactNode }): React.ReactElement {
   const blockColors = { border: '#E2E8F0', textMuted: '#64748B' };
   return (
