@@ -124,9 +124,11 @@ Aplikasi frontend web akan berjalan di [http://localhost:5173](http://localhost:
 
 ## Dokumentasi API Endpoint
 
-Semua response dari backend mengembalikan format seragam berikut:
-- **Sukses**: `{ "success": true, "data": { ... } }`
-- **Gagal**: `{ "success": false, "message": "...", "error": "CODE" }`
+Backend mengembalikan format JSON terstandarisasi untuk semua response:
+- **Respon Sukses (HTTP 200)**: `{ "success": true, "message": "...", "data": { ... } }`
+- **Respon Gagal (HTTP 400/404/502)**: `{ "success": false, "message": "...", "error": "CODE" }`
+
+---
 
 ### 1. Website Metadata Extractor
 - **URL**: `/extract/website`
@@ -135,10 +137,11 @@ Semua response dari backend mengembalikan format seragam berikut:
   ```json
   { "url": "https://paper.id" }
   ```
-- **Response 200**:
+- **Respon Sukses (200 OK)**:
   ```json
   {
     "success": true,
+    "message": "Website metadata extracted successfully",
     "data": {
       "url": "https://paper.id",
       "title": "Paper.id - Invoice & Pembayaran Bisnis No.1 di Indonesia",
@@ -146,66 +149,114 @@ Semua response dari backend mengembalikan format seragam berikut:
       "canonical": "https://paper.id",
       "favicon": "https://paper.id/favicon.ico",
       "emails": ["support@paper.id"],
-      "phones": ["08123456789"],
+      "phones": ["+6285574677916"],
       "social_media": ["https://instagram.com/paper.id"],
       "open_graph": { "title": "Paper.id", "description": "...", "image": "..." }
     }
   }
   ```
+- **Respon Gagal (400 Bad Request)**:
+  ```json
+  {
+    "success": false,
+    "message": "Invalid URL format",
+    "error": "VALIDATION_ERROR"
+  }
+  ```
+- **Contoh Domain Pengujian**: `paper.id`, `tokopedia.com`, `unilever.co.id`, `google.com`
+
+---
 
 ### 2. Domain Intelligence (RDAP)
 - **URL**: `/extract/domain`
 - **Method**: `POST`
 - **Request Body**:
   ```json
-  { "domain": "paper.id" }
+  { "domain": "tokopedia.com" }
   ```
-- **Response 200**:
+- **Respon Sukses (200 OK)**:
   ```json
   {
     "success": true,
+    "message": "Domain information extracted successfully",
     "data": {
-      "domain": "paper.id",
-      "registrar": "PANDI",
-      "registered_at": "2015-10-21T09:23:11Z",
-      "expired_at": "2026-10-21T09:23:11Z",
-      "last_updated": "2025-10-21T09:23:11Z",
-      "status": ["active"],
-      "nameservers": ["ns1.dns.com", "ns2.dns.com"]
+      "domain": "tokopedia.com",
+      "registrar": "MarkMonitor Inc.",
+      "registered_at": "2009-12-17T00:00:00Z",
+      "expired_at": "2030-12-17T00:00:00Z",
+      "last_updated": "2025-11-15T00:00:00Z",
+      "status": ["clientTransferProhibited"],
+      "nameservers": ["ns1.cloudflare.com", "ns2.cloudflare.com"]
     }
   }
   ```
+- **Respon Gagal (404 Not Found)**:
+  ```json
+  {
+    "success": false,
+    "message": "Domain not found in RDAP registry",
+    "error": "DOMAIN_NOT_FOUND"
+  }
+  ```
+- **Contoh Domain Pengujian**: `tokopedia.com`, `paper.id`, `unilever.co.id`, `google.com`
+
+---
 
 ### 3. Company Location Finder (OSM Nominatim)
 - **URL**: `/extract/location`
 - **Method**: `POST`
 - **Request Body**:
   ```json
-  { "query": "PT Telkom Indonesia" }
+  { "query": "Tokopedia" }
   ```
-- **Response 200**:
+- **Respon Sukses (200 OK)**:
   ```json
   {
     "success": true,
+    "message": "Location extracted successfully",
     "data": {
-      "display_name": "Telkom Indonesia, Jalan Jenderal Gatot Subroto...",
-      "latitude": "-6.2297",
-      "longitude": "106.8164",
-      "importance": 0.75,
-      "osm_type": "node",
-      "address": { "city": "Jakarta", "country": "Indonesia" }
+      "display_name": "Tokopedia Tower, Jalan Prof. Dr. Satrio, Jakarta Selatan...",
+      "latitude": "-6.2297494",
+      "longitude": "106.8195316",
+      "importance": 0.7012,
+      "osm_type": "way",
+      "address": { "building": "Tokopedia Tower", "city": "Jakarta Selatan", "country": "Indonesia" }
     }
   }
   ```
+- **Respon Gagal (404 Not Found)**:
+  ```json
+  {
+    "success": false,
+    "message": "Location not found for query: \"domain-tidak-ada.com\"",
+    "error": "LOCATION_NOT_FOUND"
+  }
+  ```
+
+---
 
 ### 4. Integrated Company Information (GET)
 - **URL**: `/company-information`
 - **Method**: `GET`
-- **Query Params**: `domain=domain_name` (e.g. `?domain=paper.id`)
-- **Response 200 (Dengan Partial Failure)**:
+- **Query Params**: `domain=tokopedia.com`
+- **Respon Sukses Lengkap (200 OK)**:
   ```json
   {
     "success": true,
+    "message": "Company information retrieved successfully",
+    "data": {
+      "website": { "title": "Tokopedia", "url": "https://tokopedia.com", "...": "..." },
+      "domain": { "registrar": "MarkMonitor Inc.", "...": "..." },
+      "location": { "display_name": "Tokopedia Tower...", "...": "..." }
+    },
+    "warnings": []
+  }
+  ```
+- **Respon Sukses dengan Partial Failure (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Company information retrieved successfully",
     "data": {
       "website": { "title": "Paper.id", "...": "..." },
       "domain": { "registrar": "PANDI", "...": "..." },
@@ -221,23 +272,25 @@ Semua response dari backend mengembalikan format seragam berikut:
 
 ## Asumsi & Kendala Pengerjaan
 
-### Asumsi Sistem
-1. **Pembersihan Input Domain**: Jika pengguna memasukkan URL lengkap (misalnya `https://paper.id/invoice`), sistem secara otomatis merapikannya menjadi nama domain murni (`paper.id`) sebelum diproses.
-2. **Pencarian Lokasi**: Pencarian alamat kantor dilakukan menggunakan nama domain atau nama perusahaan sebagai kata kunci ke layanan peta.
-3. **Pencegahan Error Total**: Jika salah satu sumber data eksternal mengalami gangguan atau tidak menemukan data, aplikasi tetap menampilkan informasi yang berhasil didapatkan tanpa membatalkan seluruh proses (*partial failure*).
+### Asumsi yang Saya Gunakan
+1. **Pembersihan Alamat Domain**: Saya berasumsi pengguna bisa saja tidak sengaja memasukkan URL lengkap (seperti `https://paper.id/invoice`). Oleh karena itu, sistem yang saya buat otomatis membersihkannya menjadi nama domain murni (`paper.id`) sebelum diproses lebih lanjut.
+2. **Kata Kunci Pencarian Alamat**: Saya menggunakan nama domain atau nama perusahaan sebagai kata kunci utama saat mencari titik lokasi fisik ke layanan peta.
+3. **Pencegahan Error Total**: Saya menerapkan prinsip *partial failure*. Jika salah satu layanan eksternal (seperti peta) tidak menemukan data atau mengalami kendala, aplikasi buatan saya tidak akan error total, melainkan tetap menampilkan informasi dari layanan yang berhasil didapatkan.
 
-### Kendala Teknis & Solusinya
+### Kendala Teknis & Solusi yang Saya Terapkan
 
-1. **Beberapa Website Memblokir Request Otomatis (Error HTTP 403)**
-   - **Masalah**: Beberapa website besar (seperti `unilever.co.id`) menggunakan sistem keamanan Cloudflare/WAF yang otomatis menolak request dari script biasa.
-   - **Solusi**: Di file `website.service.ts`, penarikan data dilengkapi dengan header peramban (browser) modern yang presisi serta sistem percobaan ulang (*retry*) otomatis menggunakan awalan `www.` jika request awal ditolak.
+1. **Website Mengembalikan Error HTTP 403 (Diblokir Anti-Bot)**
+   - **Kendala**: Saat saya mencoba menarik metadata dari beberapa website besar (seperti `unilever.co.id`), request otomatis dari script sering diblokir oleh sistem keamanan Cloudflare atau WAF mereka.
+   - **Solusi**: Di file `website.service.ts`, saya menambahkan header peramban (browser) modern secara lengkap agar request dianggap seperti manusia yang sedang membuka browser Chrome asli, serta menambahkan fitur percobaan ulang otomatis (*retry*) dengan awalan `www.` jika alamat utama ditolak.
 
-2. **Batasan Kecepatan Request Peta (OpenStreetMap Nominatim)**
-   - **Masalah**: Layanan peta Nominatim membatasi permintaan maksimal 1 kali dalam 1 detik. Jika terlalu cepat, alamat IP pengirim bisa diblokir sementara.
-   - **Solusi**: Di file `location.service.ts`, dibuatkan mekanisme antrean (*queue*) dengan penundaan 1 detik tiap permintaan agar selalu mematuhi batas penggunaan yang diizinkan.
+2. **Batasan Kecepatan Pencarian Peta (OpenStreetMap Nominatim)**
+   - **Kendala**: Layanan peta OpenStreetMap Nominatim melarang permintaan data lebih dari 1 kali dalam 1 detik. Jika saya mengirim permintaan terlalu cepat, IP komputer saya bisa diblokir sementara.
+   - **Solusi**: Di file `location.service.ts`, saya membuat sistem antrean (*queue*) yang memberikan jeda otomatis 1 detik untuk setiap pencarian lokasi agar selalu aman dan mematuhi aturan Nominatim.
 
-3. **Format Data Domain RDAP Berbeda-beda**
-   - **Masalah**: Tanggapan JSON dari penyedia registrasi domain internasional (seperti `.com`) dan domain lokal (seperti `.id`) memiliki struktur yang tidak sama.
-   - **Solusi**: Di file `domain.service.ts`, data mentah dirapikan terlebih dahulu melalui fungsi pemetaan (*normalization*) sehingga informasi tanggal, pengelola domain (registrar), dan nameserver selalu tampil konsisten.
+3. **Format Data Domain RDAP yang Berbeda-Beda**
+   - **Kendala**: Respon JSON dari penyedia registri domain internasional (seperti `google.com` atau `tokopedia.com`) dan domain lokal (seperti `paper.id` atau `unilever.co.id`) memiliki struktur yang tidak sama.
+   - **Solusi**: Di file `domain.service.ts`, saya membuat fungsi pemetaan (*data normalization*) untuk menyamakan format tanggal, pengelola domain (registrar), dan nameserver sehingga informasi yang tampil di layar selalu konsisten.
+
+
 
 
