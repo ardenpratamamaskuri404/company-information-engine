@@ -4,6 +4,23 @@
 
 ---
 
+## Teknologi yang Digunakan (Tech Stack)
+
+### Backend
+- **Node.js (v18+)** & **TypeScript** — Penulisan kode bertipe ketat demi keandalan sistem.
+- **Express.js** — Framework backend server utama.
+- **Cheerio** & **Axios** — Parser dokumen HTML untuk Website Metadata Extractor.
+- **Nominatim Client** (OpenStreetMap API) — Geolokasi koordinat.
+- **RDAP Client** — Pengambilan informasi pendaftaran domain secara real-time.
+
+### Frontend
+- **React.js (v18)** & **TypeScript** — Framework UI utama.
+- **Vite** — Build tool ultra cepat untuk bundling.
+- **Tailwind CSS v4 & PostCSS** — Styling layout dan token desain visual premium.
+- **Axios** — HTTP client untuk komunikasi data ke Backend.
+
+---
+
 ## Fitur Utama & Kepatuhan Arsitektur
 
 1. **Service Layer Pattern**: Setiap konektor (`WebsiteService`, `DomainService`, `LocationService`) berdiri sebagai modul independen dan terisolasi. Controller hanya mengatur input/output tipis, sedangkan business logic seutuhnya dikelola oleh Service.
