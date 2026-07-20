@@ -216,3 +216,27 @@ Semua response dari backend mengembalikan format seragam berikut:
     ]
   }
   ```
+
+---
+
+## Asumsi & Kendala Pengerjaan (Assumptions & Constraints)
+
+### 1. Asumsi Sistem
+- **Sanitasi Domain**: Input URL dari user (misal `https://paper.id/invoice`) dibersihkan secara otomatis menjadi domain murni (`paper.id`).
+- **Query Lokasi**: Pencarian lokasi pada OpenStreetMap Nominatim di-fallback secara bertahap menggunakan nama domain/perusahaan.
+- **Toleransi Kegagalan**: Kegagalan pada satu API eksternal tidak boleh menggagalkan seluruh transaksi (*Graceful Partial Failure*).
+
+### 2. Kendala Teknis & Solusi Implementasi
+
+1. **Proteksi Anti-Bot / WAF (Web Application Firewall) pada Website (HTTP 403 / 406)**
+   - *Kendala*: Website tingkat enterprise (misal `unilever.co.id`) menggunakan proteksi Cloudflare/WAF yang menolak request otomatis berbasis HTTP client standar.
+   - *Solusi*: Menyusun 15 header request browser modern (termasuk `Sec-Fetch-*`, `Sec-Ch-Ua`, `Accept-Language`, `Referer`), serta menerapkan algoritma *fallback retry* otomatis ke varian domain dengan `www.`.
+
+2. **Pembatasan Rate-Limit & Policy OpenStreetMap Nominatim**
+   - *Kendala*: Nominatim memberlakukan batasan ketat maksimal 1 request/detik dan memblokir request tanpa kontak `User-Agent` yang jelas.
+   - *Solusi*: Membangun *Promise-chaining Queue* di `LocationService` untuk menjaga interval request minimal 1 detik, serta mengonfigurasi header `User-Agent` teridentifikasi.
+
+3. **Heterogenitas Data RDAP Antar Registri TLD**
+   - *Kendala*: Struktur JSON respon RDAP bervariasi antara domain internasional (`.com`/`.net`) dan domain nasional (`.id` dari PANDI).
+   - *Solusi*: Membuat *data normalization layer* di `DomainService` untuk mengekstraksi tanggal registrasi, registrar, status, dan nameservers secara terstandarisasi.
+
