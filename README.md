@@ -219,24 +219,25 @@ Semua response dari backend mengembalikan format seragam berikut:
 
 ---
 
-## Asumsi & Kendala Pengerjaan (Assumptions & Constraints)
+## Asumsi & Kendala Pengerjaan
 
-### 1. Asumsi Sistem
-- **Sanitasi Domain**: Input URL dari user (misal `https://paper.id/invoice`) dibersihkan secara otomatis menjadi domain murni (`paper.id`).
-- **Query Lokasi**: Pencarian lokasi pada OpenStreetMap Nominatim di-fallback secara bertahap menggunakan nama domain/perusahaan.
-- **Toleransi Kegagalan**: Kegagalan pada satu API eksternal tidak boleh menggagalkan seluruh transaksi (*Graceful Partial Failure*).
+### Asumsi Sistem
+1. **Pembersihan Input Domain**: Jika pengguna memasukkan URL lengkap (misalnya `https://paper.id/invoice`), sistem secara otomatis merapikannya menjadi nama domain murni (`paper.id`) sebelum diproses.
+2. **Pencarian Lokasi**: Pencarian alamat kantor dilakukan menggunakan nama domain atau nama perusahaan sebagai kata kunci ke layanan peta.
+3. **Pencegahan Error Total**: Jika salah satu sumber data eksternal mengalami gangguan atau tidak menemukan data, aplikasi tetap menampilkan informasi yang berhasil didapatkan tanpa membatalkan seluruh proses (*partial failure*).
 
-### 2. Kendala Teknis & Solusi Implementasi
+### Kendala Teknis & Solusinya
 
-1. **Proteksi Anti-Bot / WAF (Web Application Firewall) pada Website (HTTP 403 / 406)**
-   - *Kendala*: Website tingkat enterprise (misal `unilever.co.id`) menggunakan proteksi Cloudflare/WAF yang menolak request otomatis berbasis HTTP client standar.
-   - *Solusi*: Menyusun 15 header request browser modern (termasuk `Sec-Fetch-*`, `Sec-Ch-Ua`, `Accept-Language`, `Referer`), serta menerapkan algoritma *fallback retry* otomatis ke varian domain dengan `www.`.
+1. **Beberapa Website Memblokir Request Otomatis (Error HTTP 403)**
+   - **Masalah**: Beberapa website besar (seperti `unilever.co.id`) menggunakan sistem keamanan Cloudflare/WAF yang otomatis menolak request dari script biasa.
+   - **Solusi**: Di file `website.service.ts`, penarikan data dilengkapi dengan header peramban (browser) modern yang presisi serta sistem percobaan ulang (*retry*) otomatis menggunakan awalan `www.` jika request awal ditolak.
 
-2. **Pembatasan Rate-Limit & Policy OpenStreetMap Nominatim**
-   - *Kendala*: Nominatim memberlakukan batasan ketat maksimal 1 request/detik dan memblokir request tanpa kontak `User-Agent` yang jelas.
-   - *Solusi*: Membangun *Promise-chaining Queue* di `LocationService` untuk menjaga interval request minimal 1 detik, serta mengonfigurasi header `User-Agent` teridentifikasi.
+2. **Batasan Kecepatan Request Peta (OpenStreetMap Nominatim)**
+   - **Masalah**: Layanan peta Nominatim membatasi permintaan maksimal 1 kali dalam 1 detik. Jika terlalu cepat, alamat IP pengirim bisa diblokir sementara.
+   - **Solusi**: Di file `location.service.ts`, dibuatkan mekanisme antrean (*queue*) dengan penundaan 1 detik tiap permintaan agar selalu mematuhi batas penggunaan yang diizinkan.
 
-3. **Heterogenitas Data RDAP Antar Registri TLD**
-   - *Kendala*: Struktur JSON respon RDAP bervariasi antara domain internasional (`.com`/`.net`) dan domain nasional (`.id` dari PANDI).
-   - *Solusi*: Membuat *data normalization layer* di `DomainService` untuk mengekstraksi tanggal registrasi, registrar, status, dan nameservers secara terstandarisasi.
+3. **Format Data Domain RDAP Berbeda-beda**
+   - **Masalah**: Tanggapan JSON dari penyedia registrasi domain internasional (seperti `.com`) dan domain lokal (seperti `.id`) memiliki struktur yang tidak sama.
+   - **Solusi**: Di file `domain.service.ts`, data mentah dirapikan terlebih dahulu melalui fungsi pemetaan (*normalization*) sehingga informasi tanggal, pengelola domain (registrar), dan nameserver selalu tampil konsisten.
+
 
