@@ -1,6 +1,11 @@
 # Company Lookup (Data Acquisition Engine)
 
-**Company Lookup** adalah aplikasi web *single-page* pencari informasi perusahaan terintegrasi. Aplikasi ini berfungsi sebagai **Data Acquisition Engine** dengan mengumpulkan metadata website, informasi domain registrasi (RDAP), dan data koordinat lokasi geografis (OSM Nominatim) secara paralel, lalu menyajikannya dalam satu dashboard premium dan ringkas.
+**Company Lookup** adalah aplikasi pencari informasi perusahaan otomatis. Pengguna cukup memasukkan nama domain website (seperti `paper.id` atau `tokopedia.com`), dan aplikasi ini akan secara otomatis menarik 3 jenis informasi penting sekaligus:
+1. **Metadata & Kontak Website** (judul, deskripsi, email, nomor telepon, dan tautan media sosial).
+2. **Data Registrasi Domain / RDAP** (siapa pengelolanya, tanggal pendaftaran, dan nama server).
+3. **Lokasi Fisik Perusahaan** (koordinat latitude/longitude dan alamat lengkap di peta OpenStreetMap).
+
+Seluruh data ditarik secara bersamaan (*paralel*) dan langsung disajikan secara rapi dalam satu layar dashboard yang bersih dan interaktif.
 
 ---
 
